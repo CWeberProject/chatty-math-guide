@@ -34,6 +34,8 @@ serve(async (req) => {
       }
     ];
 
+    console.log('Sending request to Groq API with messages:', JSON.stringify(messages, null, 2));
+
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -41,24 +43,31 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "deepseek-math",
+        model: "mixtral-8x7b-32768",
         messages,
         temperature: 0.7,
         max_tokens: 1000,
       }),
     });
 
-    const data = await response.json();
-    console.log('Groq API Response:', data);
-
-    if (data.choices && data.choices[0]?.message?.content) {
-      const tutorResponse = data.choices[0].message.content;
-      return new Response(JSON.stringify({ tutorResponse }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } else {
-      throw new Error('Invalid response from Groq API');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Groq API error:', errorText);
+      throw new Error(`Groq API returned status ${response.status}: ${errorText}`);
     }
+
+    const data = await response.json();
+    console.log('Groq API Response:', JSON.stringify(data, null, 2));
+
+    if (!data.choices?.[0]?.message?.content) {
+      console.error('Unexpected response structure:', data);
+      throw new Error('Invalid response structure from Groq API');
+    }
+
+    const tutorResponse = data.choices[0].message.content;
+    return new Response(JSON.stringify({ tutorResponse }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error in math-tutor function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
