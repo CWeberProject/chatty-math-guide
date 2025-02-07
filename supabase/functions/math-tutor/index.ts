@@ -43,7 +43,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        model: "deepseek-r1-distill-llama-70b",
         messages,
         temperature: 0.7,
         max_tokens: 1000,
