@@ -39,6 +39,8 @@ const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
               rehypePlugins={[rehypeKatex]}
               components={{
                 p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                pre: ({ children }) => <pre className="overflow-auto p-2 bg-black/10 rounded">{children}</pre>,
+                code: ({ children }) => <code className="bg-black/10 rounded px-1">{children}</code>,
                 a: ({ href, children }) => (
                   <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
                     {children}
