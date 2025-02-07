@@ -22,15 +22,11 @@ async function makeGroqRequest(base64Image: string, retryCount = 0): Promise<Res
         model: "llama-3.2-11b-vision-preview",
         messages: [
           {
-            role: "system",
-            content: "You are a math problem transcriber. Convert math problems into clear markdown format. Include any mathematical notation using LaTeX syntax. Only provide the transcription, no explanations or solutions."
-          },
-          {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Please transcribe this math problem into markdown format with LaTeX notation where appropriate:"
+                text: "You are a math problem transcriber. Convert this math problem into clear markdown format. Include any mathematical notation using LaTeX syntax. Only provide the transcription, no explanations or solutions:"
               },
               {
                 type: "image_url",
