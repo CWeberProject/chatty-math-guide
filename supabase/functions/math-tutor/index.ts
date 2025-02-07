@@ -64,7 +64,16 @@ serve(async (req) => {
       throw new Error('Invalid response structure from Groq API');
     }
 
-    const tutorResponse = data.choices[0].message.content;
+    let tutorResponse = data.choices[0].message.content;
+    
+    // Split at </think> and take only the part after it
+    const parts = tutorResponse.split('</think>');
+    if (parts.length > 1) {
+      tutorResponse = parts[parts.length - 1].trim();
+    }
+
+    console.log('Processed tutor response:', tutorResponse);
+
     return new Response(JSON.stringify({ tutorResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
