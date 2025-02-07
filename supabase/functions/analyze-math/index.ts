@@ -11,15 +11,12 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { image } = await req.json();
-
-    // Remove the "data:image/..." prefix
     const base64Image = image.split(',')[1];
 
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -31,7 +28,7 @@ serve(async (req) => {
         contents: [{
           parts: [
             {
-              text: "You are a helpful math tutor. Analyze this math problem and provide a clear explanation of how to solve it. Break down the solution into clear steps. If you see any student work, evaluate it and provide guidance on what's correct and what needs improvement."
+              text: "You are a math problem transcriber. Convert this math problem into clear markdown format. Include any mathematical notation using LaTeX syntax. Only provide the transcription, no explanations or solutions."
             },
             {
               inline_data: {
@@ -48,8 +45,8 @@ serve(async (req) => {
     console.log('Gemini API Response:', data);
 
     if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-      const analysis = data.candidates[0].content.parts[0].text;
-      return new Response(JSON.stringify({ analysis }), {
+      const transcription = data.candidates[0].content.parts[0].text;
+      return new Response(JSON.stringify({ transcription }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {

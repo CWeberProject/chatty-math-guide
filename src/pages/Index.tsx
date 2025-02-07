@@ -6,10 +6,18 @@ import ChatInterface from '@/components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+interface Message {
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const Index = () => {
   const [problemImage, setProblemImage] = useState<string | null>(null);
   const [workImage, setWorkImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [transcription, setTranscription] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<{ role: string; content: string; }[]>([]);
   const { toast } = useToast();
 
   const handleProblemImageUpload = async (file: File) => {
@@ -19,7 +27,7 @@ const Index = () => {
         setProblemImage(e.target.result as string);
         toast({
           title: "Problem image uploaded successfully",
-          description: "Analyzing your math problem...",
+          description: "Transcribing your math problem...",
         });
         
         try {
@@ -30,10 +38,11 @@ const Index = () => {
 
           if (error) throw error;
           
-          if (data.analysis) {
+          if (data.transcription) {
+            setTranscription(data.transcription);
             toast({
-              title: "Analysis complete",
-              description: "I've analyzed your math problem and provided feedback.",
+              title: "Transcription complete",
+              description: "You can now ask questions about the math problem.",
             });
           }
         } catch (error) {
@@ -66,7 +75,41 @@ const Index = () => {
   };
 
   const handleSendMessage = async (message: string) => {
-    console.log('Message sent:', message);
+    if (!transcription) {
+      toast({
+        title: "No problem uploaded",
+        description: "Please upload a math problem first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('math-tutor', {
+        body: {
+          transcription,
+          userMessage: message,
+          chatHistory,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.tutorResponse) {
+        // Update chat history for context in future responses
+        setChatHistory(prev => [...prev, 
+          { role: "user", content: message },
+          { role: "assistant", content: data.tutorResponse }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error getting tutor response:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem getting the tutor's response. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -86,7 +129,11 @@ const Index = () => {
               {problemImage ? (
                 <ImagePreview
                   imageUrl={problemImage}
-                  onRemove={() => setProblemImage(null)}
+                  onRemove={() => {
+                    setProblemImage(null);
+                    setTranscription(null);
+                    setChatHistory([]);
+                  }}
                 />
               ) : (
                 <ImageUpload 

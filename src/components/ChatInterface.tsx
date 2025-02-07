@@ -42,8 +42,14 @@ const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMessage]);
-      onSendMessage(input.trim());
       setInput('');
+      setIsTyping(true);
+
+      try {
+        await onSendMessage(input.trim());
+      } finally {
+        setIsTyping(false);
+      }
     }
   };
 
