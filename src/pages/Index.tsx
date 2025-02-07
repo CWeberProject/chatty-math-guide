@@ -5,17 +5,32 @@ import ChatInterface from '@/components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [problemImage, setProblemImage] = useState<string | null>(null);
+  const [workImage, setWorkImage] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleImageUpload = (file: File) => {
+  const handleProblemImageUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        setCurrentImage(e.target.result as string);
+        setProblemImage(e.target.result as string);
         toast({
-          title: "Image uploaded successfully",
+          title: "Problem image uploaded successfully",
           description: "You can now start asking questions about your exercise.",
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleWorkImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setWorkImage(e.target.result as string);
+        toast({
+          title: "Work progress image uploaded successfully",
+          description: "Share where you're stuck and I'll help guide you.",
         });
       }
     };
@@ -40,14 +55,34 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-xl font-semibold mb-4">Upload Exercise</h2>
-              {currentImage ? (
+              <h2 className="text-xl font-semibold mb-4">Problem Statement</h2>
+              {problemImage ? (
                 <ImagePreview
-                  imageUrl={currentImage}
-                  onRemove={() => setCurrentImage(null)}
+                  imageUrl={problemImage}
+                  onRemove={() => setProblemImage(null)}
                 />
               ) : (
-                <ImageUpload onImageUpload={handleImageUpload} />
+                <ImageUpload 
+                  onImageUpload={handleProblemImageUpload}
+                  label="Upload your problem statement"
+                  description="Share the math problem you need help with"
+                />
+              )}
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h2 className="text-xl font-semibold mb-4">Your Work</h2>
+              {workImage ? (
+                <ImagePreview
+                  imageUrl={workImage}
+                  onRemove={() => setWorkImage(null)}
+                />
+              ) : (
+                <ImageUpload 
+                  onImageUpload={handleWorkImageUpload}
+                  label="Upload your current work"
+                  description="Share where you're stuck and need guidance"
+                />
               )}
             </div>
           </div>

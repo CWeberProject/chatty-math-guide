@@ -4,9 +4,15 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploadProps {
   onImageUpload: (file: File) => void;
+  label?: string;
+  description?: string;
 }
 
-const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
+const ImageUpload = ({ 
+  onImageUpload, 
+  label = "Drag and drop your image here, or click to select",
+  description = "Supports: JPG, PNG, GIF"
+}: ImageUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
@@ -70,10 +76,10 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
         )}
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            Drag and drop your image here, or click to select
+            {label}
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Supports: JPG, PNG, GIF
+            {description}
           </p>
         </div>
       </div>
