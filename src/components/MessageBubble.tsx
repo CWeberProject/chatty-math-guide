@@ -44,6 +44,20 @@ const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
                     {children}
                   </a>
                 ),
+                code: ({ node, inline, className, children, ...props }) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline ? (
+                    <pre className={className} {...props}>
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
               }}
             >
               {message}
