@@ -2,58 +2,56 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function makeGeminiRequest(base64Image: string, retryCount = 0): Promise<Response> {
+async function makeGroqRequest(base64Image: string, retryCount = 0): Promise<Response> {
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: "You are a math problem transcriber. Convert this math problem into clear markdown format. Include any mathematical notation using LaTeX syntax. Only provide the transcription, no explanations or solutions."
-            },
-            {
-              inline_data: {
-                mime_type: "image/jpeg",
-                data: base64Image
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
+          {
+            role: "system",
+            content: "You are a math problem transcriber. Convert math problems into clear markdown format. Include any mathematical notation using LaTeX syntax. Only provide the transcription, no explanations or solutions."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Please transcribe this math problem into markdown format with LaTeX notation where appropriate:"
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`
+                }
               }
-            }
-          ]
-        }]
+            ]
+          }
+        ],
+        temperature: 0.1
       })
     });
 
-    // If service is unavailable and we haven't exceeded retries, try again
-    if (response.status === 503 && retryCount < 3) {
-      console.log(`Retry attempt ${retryCount + 1} after 503 error`);
-      // Wait for exponential backoff time before retrying
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-      return makeGeminiRequest(base64Image, retryCount + 1);
-    }
-
     if (!response.ok) {
       const errorData = await response.text();
-      console.error(`Gemini API error (Status ${response.status}):`, errorData);
-      
-      let userMessage = "An error occurred while processing your image.";
-      if (response.status === 503) {
-        userMessage = "The service is temporarily unavailable. Please try again in a few moments.";
-      }
+      console.error(`Groq API error (Status ${response.status}):`, errorData);
       
       return new Response(JSON.stringify({ 
-        error: userMessage,
-        details: `Error: Gemini API returned status ${response.status}: ${errorData}`
+        error: "An error occurred while processing your image.",
+        details: `Error: Groq API returned status ${response.status}: ${errorData}`
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -62,7 +60,7 @@ async function makeGeminiRequest(base64Image: string, retryCount = 0): Promise<R
 
     return response;
   } catch (error) {
-    console.error('Network error in Gemini request:', error);
+    console.error('Network error in Groq request:', error);
     return new Response(JSON.stringify({ 
       error: "Failed to connect to the image processing service. Please try again.",
       details: error.toString()
@@ -87,28 +85,28 @@ serve(async (req) => {
 
     const base64Image = image.split(',')[1];
     
-    console.log('Making request to Gemini API...');
-    const response = await makeGeminiRequest(base64Image);
+    console.log('Making request to Groq API...');
+    const response = await makeGroqRequest(base64Image);
     
     if (!response.ok) {
       return response;
     }
 
     const data = await response.json();
-    console.log('Gemini API Response:', JSON.stringify(data, null, 2));
+    console.log('Groq API Response:', JSON.stringify(data, null, 2));
 
-    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-      console.error('Unexpected Gemini API response structure:', data);
+    if (!data.choices?.[0]?.message?.content) {
+      console.error('Unexpected Groq API response structure:', data);
       return new Response(JSON.stringify({ 
         error: "Invalid response format from the image processing service",
-        details: "Invalid response structure from Gemini API"
+        details: "Invalid response structure from Groq API"
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const transcription = data.candidates[0].content.parts[0].text;
+    const transcription = data.choices[0].message.content;
     return new Response(JSON.stringify({ transcription }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
