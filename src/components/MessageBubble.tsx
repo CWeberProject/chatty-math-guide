@@ -1,9 +1,8 @@
 
 import { User, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { InlineMath, BlockMath } from 'react-katex';
 
 interface MessageBubbleProps {
   message: string;
@@ -12,6 +11,42 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
+  // Function to process text and replace LaTeX expressions with proper components
+  const renderContent = (text: string) => {
+    const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('$$') && part.endsWith('$$')) {
+        // Block math
+        const math = part.slice(2, -2);
+        return <BlockMath key={index} math={math} />;
+      } else if (part.startsWith('$') && part.endsWith('$')) {
+        // Inline math
+        const math = part.slice(1, -1);
+        return <InlineMath key={index} math={math} />;
+      } else {
+        // Regular markdown
+        return (
+          <ReactMarkdown
+            key={index}
+            components={{
+              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+              pre: ({ children }) => <pre className="overflow-auto p-2 bg-black/10 rounded">{children}</pre>,
+              code: ({ children }) => <code className="bg-black/10 rounded px-1">{children}</code>,
+              a: ({ href, children }) => (
+                <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {part}
+          </ReactMarkdown>
+        );
+      }
+    });
+  };
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 animate-fade-in`}>
       <div className={`flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end max-w-[80%]`}>
@@ -34,22 +69,7 @@ const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
           }`}
         >
           <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                pre: ({ children }) => <pre className="overflow-auto p-2 bg-black/10 rounded">{children}</pre>,
-                code: ({ children }) => <code className="bg-black/10 rounded px-1">{children}</code>,
-                a: ({ href, children }) => (
-                  <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
-                    {children}
-                  </a>
-                ),
-              }}
-            >
-              {message}
-            </ReactMarkdown>
+            {renderContent(message)}
           </div>
           <p className="text-xs mt-1 opacity-70">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
