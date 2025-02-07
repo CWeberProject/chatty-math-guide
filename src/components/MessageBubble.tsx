@@ -13,19 +13,29 @@ interface MessageBubbleProps {
 const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
   // Function to process text and replace LaTeX expressions with proper components
   const renderContent = (text: string) => {
-    const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
+    // Split text by LaTeX delimiters: \[...\], \(...\), $...$ and $$...$$
+    const parts = text.split(/(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
     
     return parts.map((part, index) => {
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        // Block math
+      // Handle different LaTeX delimiters
+      if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        // Display math mode
+        const math = part.slice(2, -2);
+        return <BlockMath key={index} math={math} />;
+      } else if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        // Inline math mode
+        const math = part.slice(2, -2);
+        return <InlineMath key={index} math={math} />;
+      } else if (part.startsWith('$$') && part.endsWith('$$')) {
+        // Block math (alternative syntax)
         const math = part.slice(2, -2);
         return <BlockMath key={index} math={math} />;
       } else if (part.startsWith('$') && part.endsWith('$')) {
-        // Inline math
+        // Inline math (alternative syntax)
         const math = part.slice(1, -1);
         return <InlineMath key={index} math={math} />;
-      } else {
-        // Regular markdown
+      } else if (part.trim()) {
+        // Regular markdown content
         return (
           <ReactMarkdown
             key={index}
@@ -44,6 +54,7 @@ const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
           </ReactMarkdown>
         );
       }
+      return null;
     });
   };
 
