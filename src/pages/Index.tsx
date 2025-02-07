@@ -18,6 +18,13 @@ const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<{ role: string; content: string; }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      text: "Hello! I'm your AI math tutor. Upload a picture of your exercise, and I'll help you solve it step by step.",
+      isUser: false,
+      timestamp: new Date(),
+    },
+  ]);
   const { toast } = useToast();
 
   const handleProblemImageUpload = async (file: File) => {
@@ -85,6 +92,13 @@ const Index = () => {
     }
 
     try {
+      // Add user message to messages state
+      setMessages(prev => [...prev, {
+        text: message,
+        isUser: true,
+        timestamp: new Date()
+      }]);
+
       const { data, error } = await supabase.functions.invoke('math-tutor', {
         body: {
           transcription,
@@ -96,6 +110,13 @@ const Index = () => {
       if (error) throw error;
 
       if (data.tutorResponse) {
+        // Add tutor's response to messages state
+        setMessages(prev => [...prev, {
+          text: data.tutorResponse,
+          isUser: false,
+          timestamp: new Date()
+        }]);
+
         // Update chat history for context in future responses
         setChatHistory(prev => [...prev, 
           { role: "user", content: message },
@@ -133,6 +154,11 @@ const Index = () => {
                     setProblemImage(null);
                     setTranscription(null);
                     setChatHistory([]);
+                    setMessages([{
+                      text: "Hello! I'm your AI math tutor. Upload a picture of your exercise, and I'll help you solve it step by step.",
+                      isUser: false,
+                      timestamp: new Date(),
+                    }]);
                   }}
                 />
               ) : (
@@ -162,7 +188,7 @@ const Index = () => {
           </div>
 
           <div>
-            <ChatInterface onSendMessage={handleSendMessage} />
+            <ChatInterface messages={messages} onSendMessage={handleSendMessage} />
           </div>
         </div>
       </div>

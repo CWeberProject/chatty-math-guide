@@ -10,17 +10,11 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
+  messages: Message[];
   onSendMessage: (message: string) => void;
 }
 
-const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      text: "Hello! I'm your AI math tutor. Upload a picture of your exercise, and I'll help you solve it step by step.",
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
+const ChatInterface = ({ messages, onSendMessage }: ChatInterfaceProps) => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,12 +30,6 @@ const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      const userMessage: Message = {
-        text: input.trim(),
-        isUser: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
       setInput('');
       setIsTyping(true);
 
