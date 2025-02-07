@@ -21,6 +21,7 @@ const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
     },
   ]);
   const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,15 +32,15 @@ const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      const newMessage: Message = {
+      const userMessage: Message = {
         text: input.trim(),
         isUser: true,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) => [...prev, userMessage]);
       onSendMessage(input.trim());
       setInput('');
     }
@@ -56,6 +57,13 @@ const ChatInterface = ({ onSendMessage }: ChatInterfaceProps) => {
             timestamp={message.timestamp}
           />
         ))}
+        {isTyping && (
+          <div className="flex items-center space-x-2 text-gray-500 text-sm mt-2">
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       <form

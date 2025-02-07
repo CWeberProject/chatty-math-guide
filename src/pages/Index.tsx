@@ -3,21 +3,48 @@ import ImageUpload from '@/components/ImageUpload';
 import ImagePreview from '@/components/ImagePreview';
 import ChatInterface from '@/components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [problemImage, setProblemImage] = useState<string | null>(null);
   const [workImage, setWorkImage] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 
-  const handleProblemImageUpload = (file: File) => {
+  const handleProblemImageUpload = async (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       if (e.target?.result) {
         setProblemImage(e.target.result as string);
         toast({
           title: "Problem image uploaded successfully",
-          description: "You can now start asking questions about your exercise.",
+          description: "Analyzing your math problem...",
         });
+        
+        try {
+          setIsAnalyzing(true);
+          const { data, error } = await supabase.functions.invoke('analyze-math', {
+            body: { image: e.target.result },
+          });
+
+          if (error) throw error;
+          
+          if (data.analysis) {
+            toast({
+              title: "Analysis complete",
+              description: "I've analyzed your math problem and provided feedback.",
+            });
+          }
+        } catch (error) {
+          console.error('Error analyzing image:', error);
+          toast({
+            title: "Error analyzing image",
+            description: "There was a problem analyzing your math problem. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsAnalyzing(false);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -37,8 +64,7 @@ const Index = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSendMessage = (message: string) => {
-    // This will be handled by the backend
+  const handleSendMessage = async (message: string) => {
     console.log('Message sent:', message);
   };
 
@@ -64,7 +90,7 @@ const Index = () => {
               ) : (
                 <ImageUpload 
                   onImageUpload={handleProblemImageUpload}
-                  label="Upload your problem statement"
+                  label={isAnalyzing ? "Analyzing..." : "Upload your problem statement"}
                   description="Share the math problem you need help with"
                 />
               )}
