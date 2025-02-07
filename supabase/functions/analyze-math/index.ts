@@ -10,21 +10,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+async function makeGeminiRequest(base64Image: string, retryCount = 0): Promise<Response> {
   try {
-    const { image } = await req.json();
-    
-    if (!image) {
-      throw new Error('No image provided');
-    }
-
-    const base64Image = image.split(',')[1];
-    
-    console.log('Making request to Gemini API...');
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
@@ -47,10 +34,64 @@ serve(async (req) => {
       })
     });
 
+    // If service is unavailable and we haven't exceeded retries, try again
+    if (response.status === 503 && retryCount < 3) {
+      console.log(`Retry attempt ${retryCount + 1} after 503 error`);
+      // Wait for exponential backoff time before retrying
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      return makeGeminiRequest(base64Image, retryCount + 1);
+    }
+
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Gemini API error response:', errorData);
-      throw new Error(`Gemini API returned status ${response.status}: ${errorData}`);
+      console.error(`Gemini API error (Status ${response.status}):`, errorData);
+      
+      let userMessage = "An error occurred while processing your image.";
+      if (response.status === 503) {
+        userMessage = "The service is temporarily unavailable. Please try again in a few moments.";
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: userMessage,
+        details: `Error: Gemini API returned status ${response.status}: ${errorData}`
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Network error in Gemini request:', error);
+    return new Response(JSON.stringify({ 
+      error: "Failed to connect to the image processing service. Please try again.",
+      details: error.toString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { image } = await req.json();
+    
+    if (!image) {
+      throw new Error('No image provided');
+    }
+
+    const base64Image = image.split(',')[1];
+    
+    console.log('Making request to Gemini API...');
+    const response = await makeGeminiRequest(base64Image);
+    
+    if (!response.ok) {
+      return response;
     }
 
     const data = await response.json();
@@ -58,7 +99,13 @@ serve(async (req) => {
 
     if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
       console.error('Unexpected Gemini API response structure:', data);
-      throw new Error('Invalid response structure from Gemini API');
+      return new Response(JSON.stringify({ 
+        error: "Invalid response format from the image processing service",
+        details: "Invalid response structure from Gemini API"
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const transcription = data.candidates[0].content.parts[0].text;
@@ -69,7 +116,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in analyze-math function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: "An unexpected error occurred while processing your request",
       details: error.toString()
     }), {
       status: 500,
