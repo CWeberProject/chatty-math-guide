@@ -1,4 +1,9 @@
+
 import { User, Bot } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface MessageBubbleProps {
   message: string;
@@ -28,7 +33,22 @@ const MessageBubble = ({ message, isUser, timestamp }: MessageBubbleProps) => {
               : 'bg-secondary text-secondary-foreground rounded-br-lg'
           }`}
         >
-          <p className="text-sm">{message}</p>
+          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                a: ({ href, children }) => (
+                  <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {message}
+            </ReactMarkdown>
+          </div>
           <p className="text-xs mt-1 opacity-70">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
